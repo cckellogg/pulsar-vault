@@ -1,0 +1,67 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+package(default_visibility = ["//visibility:public"])
+
+
+pulsar_deps = [
+    "@maven//:org_apache_pulsar_pulsar_client_api",
+    "@maven//:org_apache_pulsar_pulsar_broker_common",
+]
+
+java_library(
+    name = "vault-auth",
+    srcs = glob(["com/github/cckellogg/pulsar/vault/authentication/**/*.java"]),
+    deps = pulsar_deps + [
+        "@maven//:com_github_ben_manes_caffeine_caffeine",
+        "@maven//:com_bettercloud_vault_java_driver",
+    ],
+    resource_jars = [
+        "@maven//:com_bettercloud_vault_java_driver",
+    ],
+)
+
+genrule(
+    name = "pulsar-vault-auth",
+    srcs = [":vault-auth"],
+    outs = ["pulsar-vault-auth.jar"],
+    cmd = "cp $< $@",
+)
+
+
+java_library(
+    name = "vault-func-auth-provider",
+    srcs = glob(["com/github/cckellogg/pulsar/vault/functions/auth/**/*.java"]),
+    deps = [
+        "@maven//:org_apache_pulsar_pulsar_broker_common",
+        "@maven//:org_apache_pulsar_pulsar_functions_proto",
+        "@maven//:org_apache_pulsar_pulsar_functions_runtime",
+        "@maven//:org_apache_pulsar_pulsar_functions_instance",
+        "@maven//:io_kubernetes_client_java_api",
+    ],
+)
+
+java_library(
+    name = "vault-customizer",
+    srcs = glob(["com/github/cckellogg/pulsar/vault/functions/runtime/**/*.java"]),
+    deps = [
+        "@maven//:org_apache_pulsar_pulsar_functions_proto",
+        "@maven//:org_apache_pulsar_pulsar_functions_runtime",
+        "@maven//:io_kubernetes_client_java_api",
+        "@maven//:com_google_code_gson_gson",
+    ],
+)
+
+java_library(
+    name = "vault-function-plugins",
+    resource_jars = [
+        ":vault-func-auth-provider",
+        ":vault-customizer",
+    ],
+)
+
+genrule(
+    name = "pulsar-vault-function-plugins",
+    srcs = [":vault-function-plugins"],
+    outs = ["pulsar-vault-function-plugins.jar"],
+    cmd = "cp $< $@",
+)

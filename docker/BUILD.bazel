@@ -1,0 +1,59 @@
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+load("@io_bazel_rules_docker//container:container.bzl",
+    "container_image",
+    "container_layer",
+    "container_push",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+pkg_tar(
+    name = "vault-plugins",
+    package_dir = "pulsar/lib",
+    srcs = [
+        "//pulsar/src/main/java:pulsar-vault-auth",
+        "//pulsar/src/main/java:pulsar-vault-function-plugins",
+    ],
+)
+
+container_layer(
+    name = "plugins_layer",
+    tars = [
+        ":vault-plugins",
+    ],
+)
+
+pkg_tar(
+    name = "scripts",
+    package_dir = "pulsar/bin",
+    srcs = [
+      "scripts/apply-config-from-env.py",
+      "scripts/bookie-run.sh",
+    ]
+)
+
+
+container_image(
+    name = "pulsar",
+    base = "@pulsar_base//image",
+    layers = [
+        ":plugins_layer",
+    ],
+    tars = [
+      ":scripts",
+    ],
+    env = {
+      "PULSAR_HOME": "/pulsar",
+      "PATH": "$$PATH:/pulsar/bin",
+    },
+    stamp = True,
+)
+
+container_push(
+    name = "publish",
+    format = "Docker",
+    image = ":pulsar",
+    registry = "index.docker.io",
+    repository = "cckellogg/pulsar-vault",
+    tag = "0.1",
+)
